@@ -1,3 +1,8 @@
+import pickle
+from pathlib import Path
+from typing import Self
+
+
 class Todo:
     priority: int
     description: str
@@ -54,3 +59,13 @@ class GlobalEngine:
 
     def close_project(self, name: str):
         self.projects.pop(name)
+
+    def save_to_pkl(self, path: str | Path):
+        with open(path, "wb") as f:
+            pickle.dump(path, f)
+
+    @classmethod
+    def init_from_saved_file(cls, path: str | Path) -> Self:
+        with open(path, "rb") as f:
+            loaded = pickle.load(f)
+        return loaded
