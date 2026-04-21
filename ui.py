@@ -564,8 +564,10 @@ def priority_section(priority: int, subtasks):
 # ══════════════════════════════════════════════════════════════════════════════
 
 
-def build_layout(repo_path_name: str):
-    """Retourne le html.Div racine à assigner à app.layout."""
+def build_layout():
+    """Retourne le html.Div racine à assigner à app.layout.
+    Le nom du fichier courant est géré dynamiquement via dcc.Store dans app.py.
+    """
 
     header = html.Div(
         [
@@ -577,8 +579,9 @@ def build_layout(repo_path_name: str):
                     "color": COLORS["text"],
                 },
             ),
+            # Nom du fichier courant — mis à jour via callback depuis app.py
             html.Span(
-                repo_path_name,
+                id="header-filename",
                 style={
                     "fontFamily": FONT_MONO,
                     "fontSize": "12px",
@@ -589,11 +592,26 @@ def build_layout(repo_path_name: str):
                     "borderRadius": "4px",
                 },
             ),
+            # Bouton changer de fichier, poussé à droite
+            html.Div(style={"flex": "1"}),
+            dbc.Button(
+                "Changer de fichier",
+                id="btn-open-file-modal",
+                style={
+                    "background": "transparent",
+                    "border": f"1px solid {COLORS['border']}",
+                    "color": COLORS["muted"],
+                    "fontSize": "12px",
+                    "padding": "4px 12px",
+                    "borderRadius": "6px",
+                    "cursor": "pointer",
+                },
+            ),
         ],
         style={
             "background": COLORS["surface"],
             "borderBottom": f"1px solid {COLORS['border']}",
-            "padding": "16px 36px",
+            "padding": "14px 36px",
             "display": "flex",
             "alignItems": "center",
             "position": "sticky",
@@ -623,25 +641,30 @@ def build_layout(repo_path_name: str):
             style={"marginBottom": "0"},
         ),
         style={
-            "padding": "20px 0 0 0",
+            "padding": "20px 36px 0 36px",
             "width": "100%",
-            "maxWidth": "100%",
-            "margin": "0 auto",
-            "paddingLeft": "36px",
+            "boxSizing": "border-box",
         },
     )
 
     content = html.Div(
         id="tab-content",
-        style={
-            "width": "100%",
-            "maxWidth": "100%",
-            "margin": "0 auto",
-            "padding": "28px 36px",
-        },
+        style={"width": "100%", "padding": "28px 36px", "boxSizing": "border-box"},
     )
 
     return html.Div(
-        [dcc.Store(id="refresh-trigger", data=0), header, tabs, content],
+        [
+            dcc.Store(id="repo-path", data=None),  # chemin du JSON courant (str)
+            dcc.Store(id="refresh-trigger", data=0),
+            header,
+            # Contenu principal masqué tant qu'aucun fichier n'est chargé
+            html.Div(
+                id="main-content", children=[tabs, content], style={"display": "none"}
+            ),
+            # Écran d'accueil affiché au démarrage
+            html.Div(id="welcome-screen"),
+            # Modal de sélection de fichier
+            html.Div(id="file-modal-container"),
+        ],
         style=GLOBAL_STYLE,
     )
