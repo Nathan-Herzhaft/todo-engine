@@ -53,3 +53,20 @@ def clear_task(project: Project, name: str):
 
 def clear_project(repo: Repo, name: str):
     repo.projects.pop(name)
+
+
+# In-place modification methods
+
+
+def modify_subtask(
+    subtask: SubTask,
+    description: str | None = None,
+    priority: int | None = None,
+    duration: float | None = None,
+):
+    if description:
+        subtask.description = description
+    if priority:
+        subtask.priority = priority
+    if duration:
+        subtask.duration = duration

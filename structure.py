@@ -20,10 +20,6 @@ class Task(BaseModel):
     parent_project: str
 
     @property
-    def priority(self):
-        return sum(subtask.priority for subtask in self.subtasks)
-
-    @property
     def duration(self):
         return sum(subtask.duration for subtask in self.subtasks)
 
@@ -31,10 +27,6 @@ class Task(BaseModel):
 class Project(BaseModel):
     name: str
     tasks: dict[str, Task] = {}
-
-    @property
-    def priority(self):
-        return sum(task.priority for task in self.tasks.values())
 
     @property
     def duration(self):
@@ -56,10 +48,6 @@ class Project(BaseModel):
 
 class Repo(BaseModel):
     projects: dict[str, Project] = {}
-
-    @property
-    def priority(self):
-        return sum(project.priority for project in self.projects.values())
 
     @property
     def duration(self):

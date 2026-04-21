@@ -344,4 +344,4 @@ def cb_del_subtask(n_clicks_list, trigger):
 # ══════════════════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()
