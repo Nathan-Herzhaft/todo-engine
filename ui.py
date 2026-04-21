@@ -212,42 +212,149 @@ def summary_link(label, color=None):
 
 def subtask_card(subtask, st_idx, task_name, project_name):
     pc = prio_color(subtask.priority)
-    return html.Div(
+
+    edit_form = html.Details(
         [
-            html.Div(
-                [
-                    prio_badge(subtask.priority),
-                    html.Span(
-                        subtask.description,
-                        style={"fontSize": "13px", "color": COLORS["text"]},
-                    ),
-                ],
+            html.Summary(
+                "Modifier",
                 style={
-                    "flex": "1",
-                    "display": "flex",
-                    "alignItems": "center",
-                    "gap": "10px",
+                    "color": COLORS["muted"],
+                    "fontSize": "11px",
+                    "cursor": "pointer",
+                    "userSelect": "none",
+                    "marginTop": "8px",
                 },
             ),
             html.Div(
                 [
-                    dur_badge(subtask.duration),
-                    delete_btn(
-                        {
-                            "type": "del-subtask",
-                            "project": project_name,
-                            "task": task_name,
-                            "index": st_idx,
-                        }
+                    field_group(
+                        "Description",
+                        styled_input(
+                            {
+                                "type": "edit-st-desc",
+                                "project": project_name,
+                                "task": task_name,
+                                "index": st_idx,
+                            },
+                            subtask.description,
+                            "100%",
+                        ),
+                    ),
+                    field_group(
+                        "Priorité (1–5)",
+                        styled_input(
+                            {
+                                "type": "edit-st-prio",
+                                "project": project_name,
+                                "task": task_name,
+                                "index": st_idx,
+                            },
+                            str(subtask.priority),
+                            "80px",
+                        ),
+                    ),
+                    field_group(
+                        "Durée (j)",
+                        styled_input(
+                            {
+                                "type": "edit-st-dur",
+                                "project": project_name,
+                                "task": task_name,
+                                "index": st_idx,
+                            },
+                            str(subtask.duration),
+                            "80px",
+                        ),
+                    ),
+                    html.Div(
+                        [
+                            html.Span(
+                                "\u00a0",
+                                style={
+                                    "display": "block",
+                                    "fontSize": "11px",
+                                    "marginBottom": "4px",
+                                },
+                            ),
+                            dbc.Button(
+                                "Enregistrer",
+                                id={
+                                    "type": "save-subtask",
+                                    "project": project_name,
+                                    "task": task_name,
+                                    "index": st_idx,
+                                },
+                                style={
+                                    "background": COLORS["accent"],
+                                    "border": "none",
+                                    "color": COLORS["bg"],
+                                    "fontSize": "11px",
+                                    "fontWeight": "600",
+                                    "padding": "5px 12px",
+                                    "borderRadius": "6px",
+                                    "cursor": "pointer",
+                                },
+                            ),
+                        ],
+                        style={"display": "flex", "flexDirection": "column"},
                     ),
                 ],
-                style={"display": "flex", "alignItems": "center", "gap": "8px"},
+                style={
+                    "display": "flex",
+                    "gap": "10px",
+                    "flexWrap": "wrap",
+                    "marginTop": "10px",
+                    "alignItems": "flex-end",
+                },
             ),
+        ]
+    )
+
+    return html.Div(
+        [
+            # ── Ligne principale : prio + description | durée + suppr ──────────
+            html.Div(
+                [
+                    html.Div(
+                        [
+                            prio_badge(subtask.priority),
+                            html.Span(
+                                subtask.description,
+                                style={"fontSize": "13px", "color": COLORS["text"]},
+                            ),
+                        ],
+                        style={
+                            "flex": "1",
+                            "display": "flex",
+                            "alignItems": "center",
+                            "gap": "10px",
+                        },
+                    ),
+                    html.Div(
+                        [
+                            dur_badge(subtask.duration),
+                            delete_btn(
+                                {
+                                    "type": "del-subtask",
+                                    "project": project_name,
+                                    "task": task_name,
+                                    "index": st_idx,
+                                }
+                            ),
+                        ],
+                        style={"display": "flex", "alignItems": "center", "gap": "8px"},
+                    ),
+                ],
+                style={
+                    "display": "flex",
+                    "justifyContent": "space-between",
+                    "alignItems": "center",
+                },
+            ),
+            # ── Formulaire d'édition dépliable ────────────────────────────────
+            edit_form,
         ],
         style={
-            "display": "flex",
-            "justifyContent": "space-between",
-            "alignItems": "center",
             "background": COLORS["surface"],
             "border": f"1px solid {COLORS['border']}",
             "borderLeft": f"3px solid {pc}",
@@ -338,6 +445,74 @@ def task_card(task, project_name):
         ]
     )
 
+    rename_form = html.Details(
+        [
+            html.Summary(
+                "Renommer",
+                style={
+                    "color": COLORS["muted"],
+                    "fontSize": "11px",
+                    "cursor": "pointer",
+                    "userSelect": "none",
+                },
+            ),
+            html.Div(
+                [
+                    field_group(
+                        "Nouveau nom",
+                        styled_input(
+                            {
+                                "type": "edit-task-name",
+                                "project": project_name,
+                                "task": task.name,
+                            },
+                            task.name,
+                            "220px",
+                        ),
+                    ),
+                    html.Div(
+                        [
+                            html.Span(
+                                "\u00a0",
+                                style={
+                                    "display": "block",
+                                    "fontSize": "11px",
+                                    "marginBottom": "4px",
+                                },
+                            ),
+                            dbc.Button(
+                                "Enregistrer",
+                                id={
+                                    "type": "save-task",
+                                    "project": project_name,
+                                    "task": task.name,
+                                },
+                                style={
+                                    "background": COLORS["accent"],
+                                    "border": "none",
+                                    "color": COLORS["bg"],
+                                    "fontSize": "11px",
+                                    "fontWeight": "600",
+                                    "padding": "5px 12px",
+                                    "borderRadius": "6px",
+                                    "cursor": "pointer",
+                                },
+                            ),
+                        ],
+                        style={"display": "flex", "flexDirection": "column"},
+                    ),
+                ],
+                style={
+                    "display": "flex",
+                    "gap": "10px",
+                    "flexWrap": "wrap",
+                    "marginTop": "10px",
+                    "alignItems": "flex-end",
+                },
+            ),
+        ]
+    )
+
     return html.Div(
         [
             html.Div(
@@ -369,11 +544,12 @@ def task_card(task, project_name):
                     "display": "flex",
                     "justifyContent": "space-between",
                     "alignItems": "center",
-                    "marginBottom": "10px",
                     "paddingBottom": "8px",
                     "borderBottom": f"1px solid {COLORS['border']}",
                 },
             ),
+            rename_form,
+            html.Div(style={"marginBottom": "10px"}),
             *subtask_items,
             form,
         ],
@@ -432,6 +608,66 @@ def project_card(project):
         ]
     )
 
+    rename_form = html.Details(
+        [
+            html.Summary(
+                "Renommer le projet",
+                style={
+                    "color": COLORS["muted"],
+                    "fontSize": "11px",
+                    "cursor": "pointer",
+                    "userSelect": "none",
+                },
+            ),
+            html.Div(
+                [
+                    field_group(
+                        "Nouveau nom",
+                        styled_input(
+                            {"type": "edit-project-name", "project": project.name},
+                            project.name,
+                            "240px",
+                        ),
+                    ),
+                    html.Div(
+                        [
+                            html.Span(
+                                "\u00a0",
+                                style={
+                                    "display": "block",
+                                    "fontSize": "11px",
+                                    "marginBottom": "4px",
+                                },
+                            ),
+                            dbc.Button(
+                                "Enregistrer",
+                                id={"type": "save-project", "project": project.name},
+                                style={
+                                    "background": COLORS["accent"],
+                                    "border": "none",
+                                    "color": COLORS["bg"],
+                                    "fontSize": "11px",
+                                    "fontWeight": "600",
+                                    "padding": "5px 12px",
+                                    "borderRadius": "6px",
+                                    "cursor": "pointer",
+                                },
+                            ),
+                        ],
+                        style={"display": "flex", "flexDirection": "column"},
+                    ),
+                ],
+                style={
+                    "display": "flex",
+                    "gap": "10px",
+                    "flexWrap": "wrap",
+                    "marginTop": "10px",
+                    "alignItems": "flex-end",
+                },
+            ),
+        ]
+    )
+
     return html.Div(
         [
             html.Div(
@@ -462,11 +698,12 @@ def project_card(project):
                     "display": "flex",
                     "justifyContent": "space-between",
                     "alignItems": "center",
-                    "marginBottom": "14px",
                     "paddingBottom": "10px",
                     "borderBottom": f"1px solid {COLORS['border']}",
                 },
             ),
+            rename_form,
+            html.Div(style={"marginBottom": "14px"}),
             *task_items,
             form,
         ],
@@ -482,7 +719,11 @@ def project_card(project):
     )
 
 
-def priority_section(priority: int, subtasks):
+def priority_section(priority: int, subtasks_with_idx):
+    """
+    subtasks_with_idx : liste de tuples (subtask, real_index_in_task).
+    Chaque tuple est produit par get_subtasks_with_idx() dans app.py.
+    """
     pc = prio_color(priority)
 
     items = [
@@ -497,6 +738,14 @@ def priority_section(priority: int, subtasks):
                         tag_badge(st.parent_project),
                         tag_badge(st.parent_task),
                         dur_badge(st.duration),
+                        delete_btn(
+                            {
+                                "type": "del-subtask",
+                                "project": st.parent_project,
+                                "task": st.parent_task,
+                                "index": real_idx,
+                            }
+                        ),
                     ],
                     style={"display": "flex", "alignItems": "center", "gap": "6px"},
                 ),
@@ -514,7 +763,7 @@ def priority_section(priority: int, subtasks):
                 "boxShadow": "0 2px 6px rgba(0,0,0,0.2)",
             },
         )
-        for st in subtasks
+        for st, real_idx in subtasks_with_idx
     ]
 
     return html.Div(
@@ -530,7 +779,7 @@ def priority_section(priority: int, subtasks):
                         },
                     ),
                     html.Span(
-                        f"{len(subtasks)} sous-tâche{'s' if len(subtasks) > 1 else ''}",
+                        f"{len(subtasks_with_idx)} sous-tâche{'s' if len(subtasks_with_idx) > 1 else ''}",
                         style={
                             "color": COLORS["muted"],
                             "fontSize": "12px",

@@ -25,6 +25,9 @@ from core import (
     clear_subtask,
     clear_task,
     load_repo,
+    modify_subtask,
+    rename_project,
+    rename_task,
     save_repo,
 )
 from ui import (
@@ -487,11 +490,20 @@ def render_tab(tab, _, repo_path):
         return html.Div([*cards, add_project_form])
 
     else:  # tab-priority
-        all_subtasks = repo.get_subtasks()
-        priorities = sorted({st.priority for st in all_subtasks})
-        sections = [
-            priority_section(p, repo.get_subtasks(priority=p)) for p in priorities
-        ]
+        # Construit des tuples (subtask, real_index_in_task) pour la vue priorité.
+        # L'index réel est nécessaire pour que la suppression fonctionne correctement.
+        def subtasks_with_real_idx(priority_filter=None):
+            result = []
+            for project in repo.projects.values():
+                for task in project.tasks.values():
+                    for real_idx, st in enumerate(task.subtasks):
+                        if priority_filter is None or st.priority == priority_filter:
+                            result.append((st, real_idx))
+            return result
+
+        all_st = subtasks_with_real_idx()
+        priorities = sorted({st.priority for st, _ in all_st})
+        sections = [priority_section(p, subtasks_with_real_idx(p)) for p in priorities]
         return (
             html.Div(sections)
             if sections
@@ -699,6 +711,201 @@ def cb_del_subtask(n_clicks_list, repo_path, trigger):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# CALLBACKS — ÉDITION (renommer / modifier)
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+@app.callback(
+    Output("refresh-trigger", "data", allow_duplicate=True),
+    Input({"type": "save-project", "project": dash.ALL}, "n_clicks"),
+    State({"type": "edit-project-name", "project": dash.ALL}, "value"),
+    State("repo-path", "data"),
+    State("refresh-trigger", "data"),
+    prevent_initial_call=True,
+)
+def cb_rename_project(n_clicks_list, values, repo_path, trigger):
+    ctx = callback_context
+    if not ctx.triggered or not repo_path or not any(n for n in n_clicks_list if n):
+        return dash.no_update
+    btn_id = _json.loads(ctx.triggered[0]["prop_id"].rsplit(".", 1)[0])
+    old_name = btn_id["project"]
+
+    new_name = None
+    for key, val in ctx.states.items():
+        try:
+            sid = _json.loads(key.rsplit(".", 1)[0])
+            if (
+                isinstance(sid, dict)
+                and sid.get("type") == "edit-project-name"
+                and sid.get("project") == old_name
+            ):
+                new_name = val
+                break
+        except Exception:
+            continue
+
+    if not new_name or new_name == old_name:
+        return dash.no_update
+
+    repo = load_repo(Path(repo_path))
+    project = repo.projects.get(old_name)
+    if not project:
+        return dash.no_update
+
+    rename_project(project, new_name)
+    repo.projects[new_name] = repo.projects.pop(old_name)
+    for task in project.tasks.values():
+        task.parent_project = new_name
+        for st in task.subtasks:
+            st.parent_project = new_name
+    save_repo(repo, Path(repo_path))
+    return trigger + 1
+
+
+@app.callback(
+    Output("refresh-trigger", "data", allow_duplicate=True),
+    Input({"type": "save-task", "project": dash.ALL, "task": dash.ALL}, "n_clicks"),
+    State({"type": "edit-task-name", "project": dash.ALL, "task": dash.ALL}, "value"),
+    State("repo-path", "data"),
+    State("refresh-trigger", "data"),
+    prevent_initial_call=True,
+)
+def cb_rename_task(n_clicks_list, values, repo_path, trigger):
+    ctx = callback_context
+    if not ctx.triggered or not repo_path or not any(n for n in n_clicks_list if n):
+        return dash.no_update
+    btn_id = _json.loads(ctx.triggered[0]["prop_id"].rsplit(".", 1)[0])
+    project_name = btn_id["project"]
+    old_name = btn_id["task"]
+
+    new_name = None
+    for key, val in ctx.states.items():
+        try:
+            sid = _json.loads(key.rsplit(".", 1)[0])
+            if (
+                isinstance(sid, dict)
+                and sid.get("type") == "edit-task-name"
+                and sid.get("project") == project_name
+                and sid.get("task") == old_name
+            ):
+                new_name = val
+                break
+        except Exception:
+            continue
+
+    if not new_name or new_name == old_name:
+        return dash.no_update
+
+    repo = load_repo(Path(repo_path))
+    project = repo.projects.get(project_name)
+    if not project or old_name not in project.tasks:
+        return dash.no_update
+
+    task = project.tasks[old_name]
+    rename_task(task, new_name)
+    project.tasks[new_name] = project.tasks.pop(old_name)
+    for st in task.subtasks:
+        st.parent_task = new_name
+    save_repo(repo, Path(repo_path))
+    return trigger + 1
+
+
+@app.callback(
+    Output("refresh-trigger", "data", allow_duplicate=True),
+    Input(
+        {
+            "type": "save-subtask",
+            "project": dash.ALL,
+            "task": dash.ALL,
+            "index": dash.ALL,
+        },
+        "n_clicks",
+    ),
+    State(
+        {
+            "type": "edit-st-desc",
+            "project": dash.ALL,
+            "task": dash.ALL,
+            "index": dash.ALL,
+        },
+        "value",
+    ),
+    State(
+        {
+            "type": "edit-st-prio",
+            "project": dash.ALL,
+            "task": dash.ALL,
+            "index": dash.ALL,
+        },
+        "value",
+    ),
+    State(
+        {
+            "type": "edit-st-dur",
+            "project": dash.ALL,
+            "task": dash.ALL,
+            "index": dash.ALL,
+        },
+        "value",
+    ),
+    State("repo-path", "data"),
+    State("refresh-trigger", "data"),
+    prevent_initial_call=True,
+)
+def cb_edit_subtask(n_clicks_list, descs, prios, durs, repo_path, trigger):
+    ctx = callback_context
+    if not ctx.triggered or not repo_path or not any(n for n in n_clicks_list if n):
+        return dash.no_update
+    btn_id = _json.loads(ctx.triggered[0]["prop_id"].rsplit(".", 1)[0])
+    project_name = btn_id["project"]
+    task_name = btn_id["task"]
+    st_index = btn_id["index"]
+
+    desc = prio = dur = None
+    for key, val in ctx.states.items():
+        try:
+            sid = _json.loads(key.rsplit(".", 1)[0])
+        except Exception:
+            continue
+        if not isinstance(sid, dict):
+            continue
+        if (
+            sid.get("project") != project_name
+            or sid.get("task") != task_name
+            or sid.get("index") != st_index
+        ):
+            continue
+        t = sid.get("type")
+        if t == "edit-st-desc":
+            desc = val
+        elif t == "edit-st-prio":
+            prio = val
+        elif t == "edit-st-dur":
+            dur = val
+
+    repo = load_repo(Path(repo_path))
+    project = repo.projects.get(project_name)
+    if not project:
+        return dash.no_update
+    task = project.tasks.get(task_name)
+    if not task or not (0 <= st_index < len(task.subtasks)):
+        return dash.no_update
+
+    subtask = task.subtasks[st_index]
+    try:
+        prio_val = int(prio) if prio else None
+        dur_val = float(dur) if dur else None
+    except ValueError:
+        return dash.no_update
+
+    modify_subtask(
+        subtask, description=desc or None, priority=prio_val, duration=dur_val
+    )
+    save_repo(repo, Path(repo_path))
+    return trigger + 1
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()

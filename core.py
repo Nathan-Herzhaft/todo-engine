@@ -58,6 +58,14 @@ def clear_project(repo: Repo, name: str):
 # In-place modification methods
 
 
+def rename_task(task: Task, name: str):
+    task.name = name
+
+
+def rename_project(project: Project, name: str):
+    project.name = name
+
+
 def modify_subtask(
     subtask: SubTask,
     description: str | None = None,
