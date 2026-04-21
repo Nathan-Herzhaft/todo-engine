@@ -1,71 +1,55 @@
-import pickle
 from pathlib import Path
-from typing import Self
+
+from structure import Project, Repo, SubTask, Task
+
+# JSON save and load
 
 
-class Todo:
-    priority: int
-    description: str
-    overall_task: str | None
-
-    def __init__(
-        self, priority: int, description: str, overall_task: str | None = None
-    ):
-        self.id = id
-        self.priority = priority
-        self.description = description
-        self.overall_task = overall_task
-
-    def change_description(self, description: str):
-        self.description = description
-
-    def change_overall_task(self, overall_task: str):
-        self.overall_task = overall_task
+def save_repo(repo: Repo, path: Path):
+    with open(path, "w") as f:
+        f.wrtie(repo.model_dump_json())
 
 
-class Project:
-    todo_list: dict[int:Todo]
-    name: str
+def load_repo(path: Path):
+    with open(path) as f:
+        data = f.read()
+    repo = Repo.model_validate_json(data)
+    return repo
 
-    def __init__(self, name: str):
-        self.todo_list = {}
 
-    def add_todo(
-        self, priority: int, description: str, overall_task: str | None = None
-    ):
-        id = 0
-        while any(self.todo_list.keys() == id):
-            id += 1
-        todo = Todo(
-            id=id,
-            priority=priority,
+# Add methods
+
+
+def add_subtask(task: Task, description: str, priority: int, duration: float = 0):
+    task.subtasks.append(
+        SubTask(
             description=description,
-            overall_task=overall_task,
+            priority=priority,
+            duration=duration,
+            parent_task=task.name,
+            parent_project=task.parent_project,
         )
-        self.todo_list[id] = todo
-
-    def close_todo(self, id: int):
-        self.todo_list.pop(id)
+    )
 
 
-class GlobalEngine:
-    projects: list[Project]
+def add_task(project: Project, name: str):
+    project.tasks[name] = Task(name=name, parent_project=project.name)
 
-    def __init__(self):
-        self.projects = {}
 
-    def new_project(self, name: str):
-        self.projects[name] = Project(name)
+def add_project(repo: Repo, name: str):
+    repo.projects[name] = Project(name=name)
 
-    def close_project(self, name: str):
-        self.projects.pop(name)
 
-    def save_to_pkl(self, path: str | Path):
-        with open(path, "wb") as f:
-            pickle.dump(path, f)
+# Clear methods
 
-    @classmethod
-    def init_from_saved_file(cls, path: str | Path) -> Self:
-        with open(path, "rb") as f:
-            loaded = pickle.load(f)
-        return loaded
+
+def clear_subtask(task: Task, index: int):
+    task.subtasks.pop(index)
+
+
+def clear_task(project: Project, name: str):
+    project.tasks.pop(name)
+
+
+def clear_project(repo: Repo, name: str):
+    repo.projects.pop(name)
