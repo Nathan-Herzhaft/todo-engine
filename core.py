@@ -7,7 +7,7 @@ from structure import Project, Repo, SubTask, Task
 
 def save_repo(repo: Repo, path: Path):
     with open(path, "w") as f:
-        f.wrtie(repo.model_dump_json())
+        f.write(repo.model_dump_json())
 
 
 def load_repo(path: Path):

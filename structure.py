@@ -33,12 +33,12 @@ class Project(BaseModel):
     tasks: dict[str, Task] = {}
 
     @property
-    def global_priority(self):
-        return sum(task.priority for task in self.tasks)
+    def priority(self):
+        return sum(task.priority for task in self.tasks.values())
 
     @property
-    def global_duration(self):
-        return sum(task.duration for task in self.tasks)
+    def duration(self):
+        return sum(task.duration for task in self.tasks.values())
 
     def get_subtasks(self, priority: int | None) -> list[SubTask]:
         return_list: list[SubTask] = []
@@ -57,6 +57,14 @@ class Project(BaseModel):
 class Repo(BaseModel):
     projects: dict[str, Project] = {}
 
+    @property
+    def priority(self):
+        return sum(project.priority for project in self.projects.values())
+
+    @property
+    def duration(self):
+        return sum(project.duration for project in self.projects.values())
+
     def get_tasks(self) -> list[Task]:
 
         return_list: list[Task] = []
@@ -66,7 +74,7 @@ class Repo(BaseModel):
 
         return return_list
 
-    def get_subtasks(self, priority: int | None) -> list[SubTask]:
+    def get_subtasks(self, priority: int | None = None) -> list[SubTask]:
         return_list: list[SubTask] = []
 
         for project in self.projects.values():
