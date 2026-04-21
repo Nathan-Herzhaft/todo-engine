@@ -625,7 +625,7 @@ def build_layout(repo_path_name: str):
         style={
             "padding": "20px 0 0 0",
             "width": "100%",
-            "maxWidth": "1200px",
+            "maxWidth": "100%",
             "margin": "0 auto",
             "paddingLeft": "36px",
         },
@@ -635,7 +635,7 @@ def build_layout(repo_path_name: str):
         id="tab-content",
         style={
             "width": "100%",
-            "maxWidth": "1200px",
+            "maxWidth": "100%",
             "margin": "0 auto",
             "padding": "28px 36px",
         },
