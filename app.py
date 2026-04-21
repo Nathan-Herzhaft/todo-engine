@@ -1,5 +1,5 @@
 """
-app.py — Point d'entrée de l'application Dash TODO
+app.py — Point d'entrée de l'application Dash TODO-Engine
 Lancement : python app.py
 
 Dépendances : dash, dash-bootstrap-components, pydantic
@@ -52,7 +52,7 @@ app = dash.Dash(
     external_stylesheets=[dbc.themes.BOOTSTRAP, GOOGLE_FONTS],
     suppress_callback_exceptions=True,
 )
-app.title = "TODO Repo"
+app.title = "TODO-Engine"
 app.layout = build_layout()
 
 
@@ -225,7 +225,7 @@ def _welcome_screen(existing_jsons: list[str]):
         _card(
             [
                 html.Div(
-                    "Bienvenue dans Todo Repo",
+                    "Bienvenue dans Todo-Engine",
                     style={
                         "fontWeight": "700",
                         "fontSize": "22px",
