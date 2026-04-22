@@ -1,5 +1,5 @@
 """
-app.py — Point d'entrée de l'application Dash TODO-Engine
+app.py — Point d'entrée de l'application Dash Todo-Engine
 Lancement : python app.py
 
 Dépendances : dash, dash-bootstrap-components, pydantic
@@ -39,7 +39,7 @@ app = dash.Dash(
     external_stylesheets=[dbc.themes.BOOTSTRAP, GOOGLE_FONTS],
     suppress_callback_exceptions=True,
 )
-app.title = "TODO-Engine"
+app.title = "Todo-Engine"
 app.layout = build_layout()
 
 
@@ -197,7 +197,7 @@ def _welcome_screen(existing_jsons: list[str]):
         _card(
             [
                 html.Div(
-                    "Bienvenue dans TODO-Engine",
+                    "Bienvenue dans Todo-Engine",
                     style={
                         "fontWeight": "700",
                         "fontSize": "22px",
@@ -745,13 +745,11 @@ def cb_edit_subtask(n_clicks_list, descs, prios, durs, repo_path, trigger):
     if not project:
         return dash.no_update
     task = project.get_task(tname)
-    if not task or old_desc not in task.subtasks:
+    if not task or old_desc not in task.subtasks or (new_desc and new_desc == old_desc):
         return dash.no_update
-    # Description modifiée → re-keyer le dict via rename_subtask
-    if new_desc and new_desc != old_desc:
-        task.modify_subtask(
-            old_desc, description=new_desc, priority=prio_val, duration=dur_val
-        )
+    task.modify_subtask(
+        old_desc, description=new_desc, priority=prio_val, duration=dur_val
+    )
     repo.save(Path(repo_path))
     return trigger + 1
 
