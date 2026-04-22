@@ -54,7 +54,7 @@ class Task(BaseModel):
             subtask.priority = priority
         if duration:
             subtask.duration = duration
-        self.subtasks[description] = subtask
+        self.subtasks[description or current_description] = subtask
 
 
 class Project(BaseModel):
