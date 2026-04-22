@@ -366,9 +366,12 @@ def subtask_card(subtask, st_desc, task_name, project_name):
 
 
 def task_card(task, project_name):
+    subtasks = task.subtasks.items()
+    subtasks_sorted = sorted(
+        subtasks, key=lambda x: str(x[1].priority) + x[1].description
+    )  # Sort by priority then description
     subtask_items = [
-        subtask_card(st, desc, task.name, project_name)
-        for desc, st in task.subtasks.items()
+        subtask_card(st, desc, task.name, project_name) for desc, st in subtasks_sorted
     ]
 
     form = html.Details(

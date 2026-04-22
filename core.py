@@ -11,19 +11,6 @@ class SubTask(BaseModel):
     priority: int
     duration: float
 
-    def modify(
-        self,
-        description: str | None = None,
-        priority: int | None = None,
-        duration: float | None = None,
-    ):
-        if description:
-            self.description = description
-        if priority:
-            self.priority = priority
-        if duration:
-            self.duration = duration
-
 
 class Task(BaseModel):
     name: str
@@ -40,11 +27,6 @@ class Task(BaseModel):
 
     # SubTask Management
 
-    def rename_subtask(self, old_description: str, new_description: str):
-        subtask = self.subtasks.pop(old_description)
-        subtask.modify(new_description)
-        self.subtasks[new_description] = subtask
-
     def get_subtask(self, subtask_description: str) -> SubTask:
         return self.subtasks.get(subtask_description)
 
@@ -58,6 +40,22 @@ class Task(BaseModel):
     def clear_subtask(self, description: str):
         self.subtasks.pop(description)
 
+    def modify_subtask(
+        self,
+        current_description: str,
+        description: str | None = None,
+        priority: int | None = None,
+        duration: float | None = None,
+    ):
+        subtask = self.subtasks.pop(current_description)
+        if description:
+            subtask.description = description
+        if priority:
+            subtask.priority = priority
+        if duration:
+            subtask.duration = duration
+        self.subtasks[description] = subtask
+
 
 class Project(BaseModel):
     name: str
@@ -69,9 +67,6 @@ class Project(BaseModel):
     def duration(self) -> float:
         return sum(task.duration for task in self.tasks.values())
 
-    def rename(self, name: str):
-        self.name = name
-
     # Task Management
 
     def get_task(self, task_name: str) -> Task:
@@ -82,6 +77,11 @@ class Project(BaseModel):
 
     def clear_task(self, name: str):
         self.tasks.pop(name)
+
+    def rename_task(self, current_name: str, name: str):
+        task = self.tasks.pop(current_name)
+        task.name = name
+        self.tasks[name] = task
 
     # Retrieval
 
@@ -121,6 +121,11 @@ class Repo(BaseModel):
 
     def clear_project(self, name: str):
         self.projects.pop(name)
+
+    def rename_project(self, current_name: str, name: str):
+        project = self.projects.pop(current_name)
+        project.name = name
+        self.projects[name] = project
 
     # Retrieval
 

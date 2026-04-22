@@ -648,11 +648,9 @@ def cb_rename_project(n_clicks_list, values, repo_path, trigger):
     if not new_name or new_name == old_name:
         return dash.no_update
     repo = Repo.load(Path(repo_path))
-    project = repo.get_project(old_name)
-    if not project:
+    if old_name not in repo.projects:
         return dash.no_update
-    project.rename(new_name)
-    repo.projects[new_name] = repo.projects.pop(old_name)
+    repo.rename_project(old_name, new_name)
     repo.save(Path(repo_path))
     return trigger + 1
 
@@ -679,9 +677,7 @@ def cb_rename_task(n_clicks_list, values, repo_path, trigger):
     project = repo.get_project(pname)
     if not project or old_name not in project.tasks:
         return dash.no_update
-    task = project.tasks[old_name]
-    task.rename(new_name)
-    project.tasks[new_name] = project.tasks.pop(old_name)
+    project.rename_task(old_name, new_name)
     repo.save(Path(repo_path))
     return trigger + 1
 
@@ -751,13 +747,11 @@ def cb_edit_subtask(n_clicks_list, descs, prios, durs, repo_path, trigger):
     task = project.get_task(tname)
     if not task or old_desc not in task.subtasks:
         return dash.no_update
-    subtask = task.subtasks[old_desc]
     # Description modifiée → re-keyer le dict via rename_subtask
     if new_desc and new_desc != old_desc:
-        task.rename_subtask(old_desc, new_desc)
-        subtask = task.subtasks[new_desc]
-    # Modifier priorité et durée si renseignées
-    subtask.modify(priority=prio_val, duration=dur_val)
+        task.modify_subtask(
+            old_desc, description=new_desc, priority=prio_val, duration=dur_val
+        )
     repo.save(Path(repo_path))
     return trigger + 1
 
