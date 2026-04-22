@@ -210,7 +210,7 @@ def summary_link(label, color=None):
 # ══════════════════════════════════════════════════════════════════════════════
 
 
-def subtask_card(subtask, st_idx, task_name, project_name):
+def subtask_card(subtask, st_desc, task_name, project_name):
     pc = prio_color(subtask.priority)
 
     edit_form = html.Details(
@@ -234,7 +234,7 @@ def subtask_card(subtask, st_idx, task_name, project_name):
                                 "type": "edit-st-desc",
                                 "project": project_name,
                                 "task": task_name,
-                                "index": st_idx,
+                                "desc": st_desc,
                             },
                             subtask.description,
                             "100%",
@@ -247,7 +247,7 @@ def subtask_card(subtask, st_idx, task_name, project_name):
                                 "type": "edit-st-prio",
                                 "project": project_name,
                                 "task": task_name,
-                                "index": st_idx,
+                                "desc": st_desc,
                             },
                             str(subtask.priority),
                             "80px",
@@ -260,7 +260,7 @@ def subtask_card(subtask, st_idx, task_name, project_name):
                                 "type": "edit-st-dur",
                                 "project": project_name,
                                 "task": task_name,
-                                "index": st_idx,
+                                "desc": st_desc,
                             },
                             str(subtask.duration),
                             "80px",
@@ -282,7 +282,7 @@ def subtask_card(subtask, st_idx, task_name, project_name):
                                     "type": "save-subtask",
                                     "project": project_name,
                                     "task": task_name,
-                                    "index": st_idx,
+                                    "desc": st_desc,
                                 },
                                 style={
                                     "background": COLORS["accent"],
@@ -338,7 +338,7 @@ def subtask_card(subtask, st_idx, task_name, project_name):
                                     "type": "del-subtask",
                                     "project": project_name,
                                     "task": task_name,
-                                    "index": st_idx,
+                                    "desc": st_desc,
                                 }
                             ),
                         ],
@@ -367,8 +367,8 @@ def subtask_card(subtask, st_idx, task_name, project_name):
 
 def task_card(task, project_name):
     subtask_items = [
-        subtask_card(st, idx, task.name, project_name)
-        for idx, st in enumerate(task.subtasks)
+        subtask_card(st, desc, task.name, project_name)
+        for desc, st in task.subtasks.items()
     ]
 
     form = html.Details(
@@ -719,10 +719,10 @@ def project_card(project):
     )
 
 
-def priority_section(priority: int, subtasks_with_idx):
+def priority_section(priority: int, subtasks_tuples):
     """
-    subtasks_with_idx : liste de tuples (subtask, real_index_in_task).
-    Chaque tuple est produit par get_subtasks_with_idx() dans app.py.
+    subtasks_tuples : liste de tuples (Project, Task, SubTask)
+    telle que retournée par repo.subtasks(priority=p).
     """
     pc = prio_color(priority)
 
@@ -735,15 +735,15 @@ def priority_section(priority: int, subtasks_with_idx):
                 ),
                 html.Div(
                     [
-                        tag_badge(st.parent_project),
-                        tag_badge(st.parent_task),
+                        tag_badge(project.name),
+                        tag_badge(task.name),
                         dur_badge(st.duration),
                         delete_btn(
                             {
                                 "type": "del-subtask",
-                                "project": st.parent_project,
-                                "task": st.parent_task,
-                                "index": real_idx,
+                                "project": project.name,
+                                "task": task.name,
+                                "desc": st.description,
                             }
                         ),
                     ],
@@ -763,7 +763,7 @@ def priority_section(priority: int, subtasks_with_idx):
                 "boxShadow": "0 2px 6px rgba(0,0,0,0.2)",
             },
         )
-        for st, real_idx in subtasks_with_idx
+        for project, task, st in subtasks_tuples
     ]
 
     return html.Div(
@@ -779,7 +779,7 @@ def priority_section(priority: int, subtasks_with_idx):
                         },
                     ),
                     html.Span(
-                        f"{len(subtasks_with_idx)} sous-tâche{'s' if len(subtasks_with_idx) > 1 else ''}",
+                        f"{len(subtasks_tuples)} sous-tâche{'s' if len(subtasks_tuples) > 1 else ''}",
                         style={
                             "color": COLORS["muted"],
                             "fontSize": "12px",

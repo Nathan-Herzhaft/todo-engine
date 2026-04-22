@@ -1,80 +1,150 @@
 from pathlib import Path
+from typing import Self
 
-from structure import Project, Repo, SubTask, Task
-
-# JSON save and load
-
-
-def save_repo(repo: Repo, path: Path):
-    with open(path, "w") as f:
-        f.write(repo.model_dump_json())
+from pydantic import (
+    BaseModel,
+)
 
 
-def load_repo(path: Path):
-    with open(path) as f:
-        data = f.read()
-    repo = Repo.model_validate_json(data)
-    return repo
+class SubTask(BaseModel):
+    description: str
+    priority: int
+    duration: float
+
+    def modify(
+        self,
+        description: str | None = None,
+        priority: int | None = None,
+        duration: float | None = None,
+    ):
+        if description:
+            self.description = description
+        if priority:
+            self.priority = priority
+        if duration:
+            self.duration = duration
 
 
-# Add methods
+class Task(BaseModel):
+    name: str
+    subtasks: dict[str, SubTask] = {}
 
+    # Self properties
 
-def add_subtask(task: Task, description: str, priority: int, duration: float = 0):
-    task.subtasks.append(
-        SubTask(
+    def rename(self, name: str):
+        self.name = name
+
+    @property
+    def duration(self) -> float:
+        return sum(subtask.duration for subtask in self.subtasks.values())
+
+    # SubTask Management
+
+    def rename_subtask(self, old_description: str, new_description: str):
+        subtask = self.subtasks.pop(old_description)
+        subtask.modify(new_description)
+        self.subtasks[new_description] = subtask
+
+    def get_subtask(self, subtask_description: str) -> SubTask:
+        return self.subtasks.get(subtask_description)
+
+    def add_subtask(self, description: str, priority: int, duration: float = 0):
+        self.subtasks[description] = SubTask(
             description=description,
             priority=priority,
             duration=duration,
-            parent_task=task.name,
-            parent_project=task.parent_project,
         )
-    )
+
+    def clear_subtask(self, description: str):
+        self.subtasks.pop(description)
 
 
-def add_task(project: Project, name: str):
-    project.tasks[name] = Task(name=name, parent_project=project.name)
+class Project(BaseModel):
+    name: str
+    tasks: dict[str, Task] = {}
+
+    # Self properties
+
+    @property
+    def duration(self) -> float:
+        return sum(task.duration for task in self.tasks.values())
+
+    def rename(self, name: str):
+        self.name = name
+
+    # Task Management
+
+    def get_task(self, task_name: str) -> Task:
+        return self.tasks.get(task_name)
+
+    def add_task(self, name: str):
+        self.tasks[name] = Task(name=name)
+
+    def clear_task(self, name: str):
+        self.tasks.pop(name)
+
+    # Retrieval
+
+    def subtasks(self, priority: int | None = None) -> list[tuple[Task, SubTask]]:
+        return_list: list[tuple[Task, SubTask]] = []
+
+        for task in self.tasks.values():
+            list_subtasks = [(task, subtask) for subtask in task.subtasks.values()]
+            return_list += list_subtasks
+
+        if priority:
+            return_list = [
+                (task, subtask)
+                for task, subtask in return_list
+                if subtask.priority == priority
+            ]
+
+        return return_list
 
 
-def add_project(repo: Repo, name: str):
-    repo.projects[name] = Project(name=name)
+class Repo(BaseModel):
+    projects: dict[str, Project] = {}
 
+    # Self properties
 
-# Clear methods
+    @property
+    def duration(self):
+        return sum(project.duration for project in self.projects.values())
 
+    # Project Management
 
-def clear_subtask(task: Task, index: int):
-    task.subtasks.pop(index)
+    def get_project(self, project_name: str) -> Project:
+        return self.projects.get(project_name)
 
+    def add_project(self, name: str):
+        self.projects[name] = Project(name=name)
 
-def clear_task(project: Project, name: str):
-    project.tasks.pop(name)
+    def clear_project(self, name: str):
+        self.projects.pop(name)
 
+    # Retrieval
 
-def clear_project(repo: Repo, name: str):
-    repo.projects.pop(name)
+    def subtasks(
+        self, priority: int | None = None
+    ) -> list[tuple[Project, Task, SubTask]]:
+        return_list: list[tuple[Project, Task, SubTask]] = []
 
+        for project in self.projects.values():
+            return_list += [
+                (project, task, subtask)
+                for task, subtask in project.subtasks(priority=priority)
+            ]
+        return return_list
 
-# In-place modification methods
+    # JSON association
 
+    def save(self, path: Path):
+        with open(path, "w") as f:
+            f.write(self.model_dump_json())
 
-def rename_task(task: Task, name: str):
-    task.name = name
-
-
-def rename_project(project: Project, name: str):
-    project.name = name
-
-
-def modify_subtask(
-    subtask: SubTask,
-    description: str | None = None,
-    priority: int | None = None,
-    duration: float | None = None,
-):
-    if description:
-        subtask.description = description
-    if priority:
-        subtask.priority = priority
-    if duration:
-        subtask.duration = duration
+    @classmethod
+    def load(cls, path: Path) -> Self:
+        with open(path) as f:
+            data = f.read()
+        repo = Repo.model_validate_json(data)
+        return repo

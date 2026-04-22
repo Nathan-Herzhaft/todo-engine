@@ -4,10 +4,9 @@ Lancement : python app.py
 
 Dépendances : dash, dash-bootstrap-components, pydantic
 Structure   :
-  app.py       ← ce fichier  (Dash init, layout, callbacks)
-  ui.py        ← thème, composants, cards
-  core.py      ← lecture/écriture JSON, add/clear
-  structure.py ← modèles Pydantic
+  app.py  ← ce fichier  (Dash init, layout, callbacks)
+  ui.py   ← thème, composants, cards
+  core.py ← modèles Pydantic + méthodes métier
 """
 
 import json as _json
@@ -17,19 +16,7 @@ import dash
 import dash_bootstrap_components as dbc
 from dash import Input, Output, State, callback_context, html
 
-from core import (
-    add_project,
-    add_subtask,
-    add_task,
-    clear_project,
-    clear_subtask,
-    clear_task,
-    load_repo,
-    modify_subtask,
-    rename_project,
-    rename_task,
-    save_repo,
-)
+from core import Repo
 from ui import (
     COLORS,
     FONT_MONO,
@@ -57,7 +44,7 @@ app.layout = build_layout()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# HELPERS UI (modaux / écrans)
+# HELPERS — MODAUX / ÉCRANS
 # ══════════════════════════════════════════════════════════════════════════════
 
 
@@ -112,63 +99,51 @@ def _card(children, style_extra=None):
 
 
 def _file_selection_ui(existing_jsons: list[str], error: str = ""):
-    """
-    Génère le contenu du panneau de sélection de fichier.
-    existing_jsons : liste de chemins JSON trouvés dans le répertoire courant.
-    """
-    existing_items = []
-    for path in existing_jsons:
-        name = Path(path).name
-        existing_items.append(
-            html.Div(
-                [
-                    html.Span(
-                        name,
-                        style={
-                            "fontFamily": FONT_MONO,
-                            "fontSize": "13px",
-                            "color": COLORS["text"],
-                            "flex": "1",
-                        },
-                    ),
-                    dbc.Button(
-                        "Charger",
-                        id={"type": "btn-load-existing", "path": path},
-                        style={
-                            "background": COLORS["accent"],
-                            "border": "none",
-                            "color": COLORS["bg"],
-                            "fontSize": "12px",
-                            "fontWeight": "600",
-                            "padding": "4px 14px",
-                            "borderRadius": "6px",
-                            "cursor": "pointer",
-                        },
-                    ),
-                ],
-                style={
-                    "display": "flex",
-                    "alignItems": "center",
-                    "justifyContent": "space-between",
-                    "padding": "8px 12px",
-                    "borderRadius": "8px",
-                    "marginBottom": "6px",
-                    "background": COLORS["surface"],
-                    "border": f"1px solid {COLORS['border']}",
-                },
-            )
+    existing_items = [
+        html.Div(
+            [
+                html.Span(
+                    Path(path).name,
+                    style={
+                        "fontFamily": FONT_MONO,
+                        "fontSize": "13px",
+                        "color": COLORS["text"],
+                        "flex": "1",
+                    },
+                ),
+                dbc.Button(
+                    "Charger",
+                    id={"type": "btn-load-existing", "path": path},
+                    style={
+                        "background": COLORS["accent"],
+                        "border": "none",
+                        "color": COLORS["bg"],
+                        "fontSize": "12px",
+                        "fontWeight": "600",
+                        "padding": "4px 14px",
+                        "borderRadius": "6px",
+                        "cursor": "pointer",
+                    },
+                ),
+            ],
+            style={
+                "display": "flex",
+                "alignItems": "center",
+                "justifyContent": "space-between",
+                "padding": "8px 12px",
+                "borderRadius": "8px",
+                "marginBottom": "6px",
+                "background": COLORS["surface"],
+                "border": f"1px solid {COLORS['border']}",
+            },
         )
-
-    if not existing_items:
-        existing_items = [
-            html.Div(
-                "Aucun fichier .json trouvé dans le répertoire courant.",
-                style={
-                    "color": COLORS["muted"],
-                    "fontSize": "13px",
-                },
-            )
-        ]
+        for path in existing_jsons
+    ] or [
+        html.Div(
+            "Aucun fichier .json trouvé dans le répertoire courant.",
+            style={"color": COLORS["muted"], "fontSize": "13px"},
+        )
+    ]
 
     error_div = (
         html.Div(
@@ -186,10 +161,8 @@ def _file_selection_ui(existing_jsons: list[str], error: str = ""):
 
     return html.Div(
         [
-            # ── Charger un fichier existant ───────────────────────────────────
             _section_title("Charger un fichier existant"),
             html.Div(existing_items, style={"marginBottom": "28px"}),
-            # ── Créer un nouveau fichier ──────────────────────────────────────
             _section_title("Créer un nouveau repo"),
             _label("Nom du fichier (sans extension)"),
             dbc.Input(
@@ -220,12 +193,11 @@ def _file_selection_ui(existing_jsons: list[str], error: str = ""):
 
 
 def _welcome_screen(existing_jsons: list[str]):
-    """Écran d'accueil affiché avant qu'un fichier soit choisi."""
     return html.Div(
         _card(
             [
                 html.Div(
-                    "Bienvenue dans Todo-Engine",
+                    "Bienvenue dans TODO-Engine",
                     style={
                         "fontWeight": "700",
                         "fontSize": "22px",
@@ -250,10 +222,8 @@ def _welcome_screen(existing_jsons: list[str]):
 
 
 def _file_modal(existing_jsons: list[str], error: str = ""):
-    """Modal flottant pour changer de fichier depuis l'app."""
     return html.Div(
         [
-            # Fond semi-transparent cliquable
             html.Div(
                 id="modal-backdrop",
                 style={
@@ -263,27 +233,19 @@ def _file_modal(existing_jsons: list[str], error: str = ""):
                     "zIndex": "200",
                 },
             ),
-            # Panneau central
             html.Div(
                 _card(
                     [
                         html.Div(
-                            [
-                                html.Span(
-                                    "Changer de fichier",
-                                    style={
-                                        "fontWeight": "700",
-                                        "fontSize": "17px",
-                                        "color": COLORS["text"],
-                                    },
-                                ),
-                            ],
-                            style={
-                                "display": "flex",
-                                "justifyContent": "space-between",
-                                "alignItems": "center",
-                                "marginBottom": "22px",
-                            },
+                            html.Span(
+                                "Changer de fichier",
+                                style={
+                                    "fontWeight": "700",
+                                    "fontSize": "17px",
+                                    "color": COLORS["text"],
+                                },
+                            ),
+                            style={"marginBottom": "22px"},
                         ),
                         _file_selection_ui(existing_jsons, error),
                     ],
@@ -298,22 +260,45 @@ def _file_modal(existing_jsons: list[str], error: str = ""):
                         "maxHeight": "85vh",
                         "overflowY": "auto",
                     },
-                ),
+                )
             ),
         ]
     )
 
 
 def _scan_json_files() -> list[str]:
-    """Retourne les fichiers .json du répertoire courant (hors node_modules etc.)."""
     return sorted(str(p) for p in Path(".").glob("*.json"))
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# HELPERS — EXTRACTION DU CONTEXTE DASH
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+def _get_state(
+    ctx, type_: str, project: str, task: str | None = None, desc: str | None = None
+) -> str | None:
+    """Retrouve une valeur dans ctx.states par correspondance sur les clés JSON."""
+    for key, val in ctx.states.items():
+        try:
+            sid = _json.loads(key.rsplit(".", 1)[0])
+        except Exception:
+            continue
+        if not isinstance(sid, dict) or sid.get("type") != type_:
+            continue
+        if sid.get("project") != project:
+            continue
+        if task is not None and sid.get("task") != task:
+            continue
+        if desc is not None and sid.get("desc") != desc:
+            continue
+        return val
+    return None
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # CALLBACKS — GESTION DES FICHIERS
 # ══════════════════════════════════════════════════════════════════════════════
-
-# ── Écran d'accueil au démarrage ──────────────────────────────────────────────
 
 
 @app.callback(
@@ -322,11 +307,8 @@ def _scan_json_files() -> list[str]:
 )
 def render_welcome(repo_path):
     if repo_path is not None:
-        return []  # fichier déjà chargé, écran d'accueil masqué
+        return []
     return _welcome_screen(_scan_json_files())
-
-
-# ── Afficher / masquer le contenu principal ───────────────────────────────────
 
 
 @app.callback(
@@ -340,9 +322,6 @@ def toggle_main_content(repo_path):
     return {"display": "block"}, Path(repo_path).name
 
 
-# ── Modal "Changer de fichier" ────────────────────────────────────────────────
-
-
 @app.callback(
     Output("file-modal-container", "children"),
     Input("btn-open-file-modal", "n_clicks"),
@@ -350,14 +329,10 @@ def toggle_main_content(repo_path):
     prevent_initial_call=True,
 )
 def toggle_file_modal(open_clicks, repo_path):
-    ctx = callback_context
-    trigger = ctx.triggered[0]["prop_id"].split(".")[0]
+    trigger = callback_context.triggered[0]["prop_id"].split(".")[0]
     if trigger == "btn-open-file-modal":
         return _file_modal(_scan_json_files())
-    return []  # fermeture
-
-
-# ── Charger un JSON existant ─────────────────────────────────────────────────
+    return []
 
 
 @app.callback(
@@ -373,11 +348,9 @@ def cb_load_existing(n_clicks_list, trigger):
     ctx = callback_context
     if not ctx.triggered or not any(n for n in n_clicks_list if n):
         return dash.no_update, dash.no_update, dash.no_update, dash.no_update
-    btn_id = _json.loads(ctx.triggered[0]["prop_id"].rsplit(".", 1)[0])
-    path = btn_id["path"]
-    # Vérifie que le fichier est lisible comme Repo
+    path = _json.loads(ctx.triggered[0]["prop_id"].rsplit(".", 1)[0])["path"]
     try:
-        load_repo(Path(path))
+        Repo.load(Path(path))
     except Exception:
         return (
             dash.no_update,
@@ -386,9 +359,6 @@ def cb_load_existing(n_clicks_list, trigger):
             dash.no_update,
         )
     return path, trigger + 1, [], []
-
-
-# ── Créer un nouveau JSON ─────────────────────────────────────────────────────
 
 
 @app.callback(
@@ -405,28 +375,25 @@ def cb_load_existing(n_clicks_list, trigger):
 def cb_create_repo(n_clicks, name, current_path, trigger):
     if not n_clicks or not name:
         return dash.no_update, dash.no_update, dash.no_update, dash.no_update
-
-    name = name.strip().rstrip(".json")
+    name = name.strip().removesuffix(".json")
     if not name:
         err = "Nom invalide."
-        modal = _file_modal(_scan_json_files(), err) if current_path else dash.no_update
-        welcome = (
-            _welcome_screen(_scan_json_files()) if not current_path else dash.no_update
+        return (
+            dash.no_update,
+            dash.no_update,
+            _file_modal(_scan_json_files(), err) if current_path else dash.no_update,
+            _welcome_screen(_scan_json_files()) if not current_path else dash.no_update,
         )
-        return dash.no_update, dash.no_update, modal, welcome
-
     path = Path(f"{name}.json")
     if path.exists():
         err = f"{path.name} existe déjà — utilisez « Charger »."
-        modal = _file_modal(_scan_json_files(), err) if current_path else dash.no_update
-        welcome = (
-            _welcome_screen(_scan_json_files()) if not current_path else dash.no_update
+        return (
+            dash.no_update,
+            dash.no_update,
+            _file_modal(_scan_json_files(), err) if current_path else dash.no_update,
+            _welcome_screen(_scan_json_files()) if not current_path else dash.no_update,
         )
-        return dash.no_update, dash.no_update, modal, welcome
-
-    from structure import Repo
-
-    save_repo(Repo(), path)
+    Repo().save(path)
     return str(path), trigger + 1, [], []
 
 
@@ -444,7 +411,7 @@ def cb_create_repo(n_clicks, name, current_path, trigger):
 def render_tab(tab, _, repo_path):
     if not repo_path:
         return []
-    repo = load_repo(Path(repo_path))
+    repo = Repo.load(Path(repo_path))
 
     if tab == "tab-projects":
         cards = [project_card(p) for p in repo.projects.values()]
@@ -490,20 +457,9 @@ def render_tab(tab, _, repo_path):
         return html.Div([*cards, add_project_form])
 
     else:  # tab-priority
-        # Construit des tuples (subtask, real_index_in_task) pour la vue priorité.
-        # L'index réel est nécessaire pour que la suppression fonctionne correctement.
-        def subtasks_with_real_idx(priority_filter=None):
-            result = []
-            for project in repo.projects.values():
-                for task in project.tasks.values():
-                    for real_idx, st in enumerate(task.subtasks):
-                        if priority_filter is None or st.priority == priority_filter:
-                            result.append((st, real_idx))
-            return result
-
-        all_st = subtasks_with_real_idx()
-        priorities = sorted({st.priority for st, _ in all_st})
-        sections = [priority_section(p, subtasks_with_real_idx(p)) for p in priorities]
+        all_st = repo.subtasks()
+        priorities = sorted({st.priority for _, _, st in all_st})
+        sections = [priority_section(p, repo.subtasks(priority=p)) for p in priorities]
         return (
             html.Div(sections)
             if sections
@@ -515,7 +471,7 @@ def render_tab(tab, _, repo_path):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# CALLBACKS — CRUD
+# CALLBACKS — CRUD PROJETS / TÂCHES / SOUS-TÂCHES
 # ══════════════════════════════════════════════════════════════════════════════
 
 
@@ -530,10 +486,10 @@ def render_tab(tab, _, repo_path):
 def cb_add_project(n_clicks, name, repo_path, trigger):
     if not n_clicks or not name or not repo_path:
         return dash.no_update
-    repo = load_repo(Path(repo_path))
+    repo = Repo.load(Path(repo_path))
     if name not in repo.projects:
-        add_project(repo, name)
-        save_repo(repo, Path(repo_path))
+        repo.add_project(name)
+        repo.save(Path(repo_path))
     return trigger + 1
 
 
@@ -549,31 +505,15 @@ def cb_add_task(n_clicks_list, names, repo_path, trigger):
     ctx = callback_context
     if not ctx.triggered or not repo_path:
         return dash.no_update
-    raw = ctx.triggered[0]["prop_id"].rsplit(".", 1)[0]
-    btn_id = _json.loads(raw)
-    project_name = btn_id["project"]
-
-    task_name = None
-    for key, val in ctx.states.items():
-        try:
-            sid = _json.loads(key.rsplit(".", 1)[0])
-            if (
-                isinstance(sid, dict)
-                and sid.get("type") == "task-name"
-                and sid.get("project") == project_name
-            ):
-                task_name = val
-                break
-        except Exception:
-            continue
-
+    project_name = _json.loads(ctx.triggered[0]["prop_id"].rsplit(".", 1)[0])["project"]
+    task_name = _get_state(ctx, "task-name", project_name)
     if not task_name:
         return dash.no_update
-    repo = load_repo(Path(repo_path))
-    project = repo.projects.get(project_name)
+    repo = Repo.load(Path(repo_path))
+    project = repo.get_project(project_name)
     if project and task_name not in project.tasks:
-        add_task(project, task_name)
-        save_repo(repo, Path(repo_path))
+        project.add_task(task_name)
+        repo.save(Path(repo_path))
     return trigger + 1
 
 
@@ -591,29 +531,12 @@ def cb_add_subtask(n_clicks_list, descs, prios, durs, repo_path, trigger):
     ctx = callback_context
     if not ctx.triggered or not repo_path:
         return dash.no_update
-    raw = ctx.triggered[0]["prop_id"].rsplit(".", 1)[0]
-    btn_id = _json.loads(raw)
-    project_name = btn_id["project"]
-    task_name = btn_id["task"]
-
-    desc = prio = dur = None
-    for key, val in ctx.states.items():
-        try:
-            sid = _json.loads(key.rsplit(".", 1)[0])
-        except Exception:
-            continue
-        if not isinstance(sid, dict):
-            continue
-        if sid.get("project") != project_name or sid.get("task") != task_name:
-            continue
-        t = sid.get("type")
-        if t == "st-desc":
-            desc = val
-        elif t == "st-prio":
-            prio = val
-        elif t == "st-dur":
-            dur = val
-
+    btn = _json.loads(ctx.triggered[0]["prop_id"].rsplit(".", 1)[0])
+    pname = btn["project"]
+    tname = btn["task"]
+    desc = _get_state(ctx, "st-desc", pname, tname)
+    prio = _get_state(ctx, "st-prio", pname, tname)
+    dur = _get_state(ctx, "st-dur", pname, tname)
     if not desc or not prio:
         return dash.no_update
     try:
@@ -621,16 +544,15 @@ def cb_add_subtask(n_clicks_list, descs, prios, durs, repo_path, trigger):
         dur = float(dur) if dur else 0.0
     except ValueError:
         return dash.no_update
-
-    repo = load_repo(Path(repo_path))
-    project = repo.projects.get(project_name)
+    repo = Repo.load(Path(repo_path))
+    project = repo.get_project(pname)
     if not project:
         return dash.no_update
-    task = project.tasks.get(task_name)
+    task = project.get_task(tname)
     if not task:
         return dash.no_update
-    add_subtask(task, desc, prio, dur)
-    save_repo(repo, Path(repo_path))
+    task.add_subtask(desc, prio, dur)
+    repo.save(Path(repo_path))
     return trigger + 1
 
 
@@ -645,12 +567,11 @@ def cb_del_project(n_clicks_list, repo_path, trigger):
     ctx = callback_context
     if not ctx.triggered or not repo_path or not any(n for n in n_clicks_list if n):
         return dash.no_update
-    btn_id = _json.loads(ctx.triggered[0]["prop_id"].rsplit(".", 1)[0])
-    project_name = btn_id["project"]
-    repo = load_repo(Path(repo_path))
-    if project_name in repo.projects:
-        clear_project(repo, project_name)
-        save_repo(repo, Path(repo_path))
+    pname = _json.loads(ctx.triggered[0]["prop_id"].rsplit(".", 1)[0])["project"]
+    repo = Repo.load(Path(repo_path))
+    if pname in repo.projects:
+        repo.clear_project(pname)
+        repo.save(Path(repo_path))
     return trigger + 1
 
 
@@ -665,14 +586,12 @@ def cb_del_task(n_clicks_list, repo_path, trigger):
     ctx = callback_context
     if not ctx.triggered or not repo_path or not any(n for n in n_clicks_list if n):
         return dash.no_update
-    btn_id = _json.loads(ctx.triggered[0]["prop_id"].rsplit(".", 1)[0])
-    project_name = btn_id["project"]
-    task_name = btn_id["task"]
-    repo = load_repo(Path(repo_path))
-    project = repo.projects.get(project_name)
-    if project and task_name in project.tasks:
-        clear_task(project, task_name)
-        save_repo(repo, Path(repo_path))
+    btn = _json.loads(ctx.triggered[0]["prop_id"].rsplit(".", 1)[0])
+    repo = Repo.load(Path(repo_path))
+    project = repo.get_project(btn["project"])
+    if project and btn["task"] in project.tasks:
+        project.clear_task(btn["task"])
+        repo.save(Path(repo_path))
     return trigger + 1
 
 
@@ -683,7 +602,7 @@ def cb_del_task(n_clicks_list, repo_path, trigger):
             "type": "del-subtask",
             "project": dash.ALL,
             "task": dash.ALL,
-            "index": dash.ALL,
+            "desc": dash.ALL,
         },
         "n_clicks",
     ),
@@ -695,18 +614,15 @@ def cb_del_subtask(n_clicks_list, repo_path, trigger):
     ctx = callback_context
     if not ctx.triggered or not repo_path or not any(n for n in n_clicks_list if n):
         return dash.no_update
-    btn_id = _json.loads(ctx.triggered[0]["prop_id"].rsplit(".", 1)[0])
-    project_name = btn_id["project"]
-    task_name = btn_id["task"]
-    st_index = btn_id["index"]
-    repo = load_repo(Path(repo_path))
-    project = repo.projects.get(project_name)
+    btn = _json.loads(ctx.triggered[0]["prop_id"].rsplit(".", 1)[0])
+    repo = Repo.load(Path(repo_path))
+    project = repo.get_project(btn["project"])
     if not project:
         return dash.no_update
-    task = project.tasks.get(task_name)
-    if task and 0 <= st_index < len(task.subtasks):
-        clear_subtask(task, st_index)
-        save_repo(repo, Path(repo_path))
+    task = project.get_task(btn["task"])
+    if task and btn["desc"] in task.subtasks:
+        task.clear_subtask(btn["desc"])
+        repo.save(Path(repo_path))
     return trigger + 1
 
 
@@ -727,38 +643,17 @@ def cb_rename_project(n_clicks_list, values, repo_path, trigger):
     ctx = callback_context
     if not ctx.triggered or not repo_path or not any(n for n in n_clicks_list if n):
         return dash.no_update
-    btn_id = _json.loads(ctx.triggered[0]["prop_id"].rsplit(".", 1)[0])
-    old_name = btn_id["project"]
-
-    new_name = None
-    for key, val in ctx.states.items():
-        try:
-            sid = _json.loads(key.rsplit(".", 1)[0])
-            if (
-                isinstance(sid, dict)
-                and sid.get("type") == "edit-project-name"
-                and sid.get("project") == old_name
-            ):
-                new_name = val
-                break
-        except Exception:
-            continue
-
+    old_name = _json.loads(ctx.triggered[0]["prop_id"].rsplit(".", 1)[0])["project"]
+    new_name = _get_state(ctx, "edit-project-name", old_name)
     if not new_name or new_name == old_name:
         return dash.no_update
-
-    repo = load_repo(Path(repo_path))
-    project = repo.projects.get(old_name)
+    repo = Repo.load(Path(repo_path))
+    project = repo.get_project(old_name)
     if not project:
         return dash.no_update
-
-    rename_project(project, new_name)
+    project.rename(new_name)
     repo.projects[new_name] = repo.projects.pop(old_name)
-    for task in project.tasks.values():
-        task.parent_project = new_name
-        for st in task.subtasks:
-            st.parent_project = new_name
-    save_repo(repo, Path(repo_path))
+    repo.save(Path(repo_path))
     return trigger + 1
 
 
@@ -774,39 +669,20 @@ def cb_rename_task(n_clicks_list, values, repo_path, trigger):
     ctx = callback_context
     if not ctx.triggered or not repo_path or not any(n for n in n_clicks_list if n):
         return dash.no_update
-    btn_id = _json.loads(ctx.triggered[0]["prop_id"].rsplit(".", 1)[0])
-    project_name = btn_id["project"]
-    old_name = btn_id["task"]
-
-    new_name = None
-    for key, val in ctx.states.items():
-        try:
-            sid = _json.loads(key.rsplit(".", 1)[0])
-            if (
-                isinstance(sid, dict)
-                and sid.get("type") == "edit-task-name"
-                and sid.get("project") == project_name
-                and sid.get("task") == old_name
-            ):
-                new_name = val
-                break
-        except Exception:
-            continue
-
+    btn = _json.loads(ctx.triggered[0]["prop_id"].rsplit(".", 1)[0])
+    pname = btn["project"]
+    old_name = btn["task"]
+    new_name = _get_state(ctx, "edit-task-name", pname, old_name)
     if not new_name or new_name == old_name:
         return dash.no_update
-
-    repo = load_repo(Path(repo_path))
-    project = repo.projects.get(project_name)
+    repo = Repo.load(Path(repo_path))
+    project = repo.get_project(pname)
     if not project or old_name not in project.tasks:
         return dash.no_update
-
     task = project.tasks[old_name]
-    rename_task(task, new_name)
+    task.rename(new_name)
     project.tasks[new_name] = project.tasks.pop(old_name)
-    for st in task.subtasks:
-        st.parent_task = new_name
-    save_repo(repo, Path(repo_path))
+    repo.save(Path(repo_path))
     return trigger + 1
 
 
@@ -817,7 +693,7 @@ def cb_rename_task(n_clicks_list, values, repo_path, trigger):
             "type": "save-subtask",
             "project": dash.ALL,
             "task": dash.ALL,
-            "index": dash.ALL,
+            "desc": dash.ALL,
         },
         "n_clicks",
     ),
@@ -826,7 +702,7 @@ def cb_rename_task(n_clicks_list, values, repo_path, trigger):
             "type": "edit-st-desc",
             "project": dash.ALL,
             "task": dash.ALL,
-            "index": dash.ALL,
+            "desc": dash.ALL,
         },
         "value",
     ),
@@ -835,7 +711,7 @@ def cb_rename_task(n_clicks_list, values, repo_path, trigger):
             "type": "edit-st-prio",
             "project": dash.ALL,
             "task": dash.ALL,
-            "index": dash.ALL,
+            "desc": dash.ALL,
         },
         "value",
     ),
@@ -844,7 +720,7 @@ def cb_rename_task(n_clicks_list, values, repo_path, trigger):
             "type": "edit-st-dur",
             "project": dash.ALL,
             "task": dash.ALL,
-            "index": dash.ALL,
+            "desc": dash.ALL,
         },
         "value",
     ),
@@ -856,52 +732,33 @@ def cb_edit_subtask(n_clicks_list, descs, prios, durs, repo_path, trigger):
     ctx = callback_context
     if not ctx.triggered or not repo_path or not any(n for n in n_clicks_list if n):
         return dash.no_update
-    btn_id = _json.loads(ctx.triggered[0]["prop_id"].rsplit(".", 1)[0])
-    project_name = btn_id["project"]
-    task_name = btn_id["task"]
-    st_index = btn_id["index"]
-
-    desc = prio = dur = None
-    for key, val in ctx.states.items():
-        try:
-            sid = _json.loads(key.rsplit(".", 1)[0])
-        except Exception:
-            continue
-        if not isinstance(sid, dict):
-            continue
-        if (
-            sid.get("project") != project_name
-            or sid.get("task") != task_name
-            or sid.get("index") != st_index
-        ):
-            continue
-        t = sid.get("type")
-        if t == "edit-st-desc":
-            desc = val
-        elif t == "edit-st-prio":
-            prio = val
-        elif t == "edit-st-dur":
-            dur = val
-
-    repo = load_repo(Path(repo_path))
-    project = repo.projects.get(project_name)
-    if not project:
-        return dash.no_update
-    task = project.tasks.get(task_name)
-    if not task or not (0 <= st_index < len(task.subtasks)):
-        return dash.no_update
-
-    subtask = task.subtasks[st_index]
+    btn = _json.loads(ctx.triggered[0]["prop_id"].rsplit(".", 1)[0])
+    pname = btn["project"]
+    tname = btn["task"]
+    old_desc = btn["desc"]
+    new_desc = _get_state(ctx, "edit-st-desc", pname, tname, old_desc)
+    prio_str = _get_state(ctx, "edit-st-prio", pname, tname, old_desc)
+    dur_str = _get_state(ctx, "edit-st-dur", pname, tname, old_desc)
     try:
-        prio_val = int(prio) if prio else None
-        dur_val = float(dur) if dur else None
+        prio_val = int(prio_str) if prio_str else None
+        dur_val = float(dur_str) if dur_str else None
     except ValueError:
         return dash.no_update
-
-    modify_subtask(
-        subtask, description=desc or None, priority=prio_val, duration=dur_val
-    )
-    save_repo(repo, Path(repo_path))
+    repo = Repo.load(Path(repo_path))
+    project = repo.get_project(pname)
+    if not project:
+        return dash.no_update
+    task = project.get_task(tname)
+    if not task or old_desc not in task.subtasks:
+        return dash.no_update
+    subtask = task.subtasks[old_desc]
+    # Description modifiée → re-keyer le dict via rename_subtask
+    if new_desc and new_desc != old_desc:
+        task.rename_subtask(old_desc, new_desc)
+        subtask = task.subtasks[new_desc]
+    # Modifier priorité et durée si renseignées
+    subtask.modify(priority=prio_val, duration=dur_val)
+    repo.save(Path(repo_path))
     return trigger + 1
 
 
