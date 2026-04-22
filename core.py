@@ -48,11 +48,11 @@ class Task(BaseModel):
         duration: float | None = None,
     ):
         subtask = self.subtasks.pop(current_description)
-        if description:
+        if description is not None:
             subtask.description = description
-        if priority:
+        if priority is not None:
             subtask.priority = priority
-        if duration:
+        if duration is not None:
             subtask.duration = duration
         self.subtasks[description or current_description] = subtask
 
