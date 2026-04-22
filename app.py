@@ -14,7 +14,8 @@ from pathlib import Path
 
 import dash
 import dash_bootstrap_components as dbc
-from dash import Input, Output, State, callback_context, html
+import plotly.graph_objects as go
+from dash import Input, Output, State, callback_context, dcc, html
 
 from core import Repo
 from ui import (
@@ -398,6 +399,194 @@ def cb_create_repo(n_clicks, name, current_path, trigger):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# DASHBOARD — KPIs ET GRAPHES
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+def _kpi_card(label: str, value: str):
+    """Petite card affichant un chiffre clé."""
+    return html.Div(
+        [
+            html.Div(
+                value,
+                style={
+                    "fontSize": "32px",
+                    "fontWeight": "700",
+                    "color": COLORS["accent"],
+                    "lineHeight": "1",
+                    "marginBottom": "6px",
+                },
+            ),
+            html.Div(
+                label,
+                style={
+                    "fontSize": "12px",
+                    "color": COLORS["muted"],
+                    "fontWeight": "500",
+                },
+            ),
+        ],
+        style={
+            "background": COLORS["card"],
+            "border": f"1px solid {COLORS['border']}",
+            "borderRadius": "12px",
+            "padding": "20px 24px",
+            "flex": "1",
+            "minWidth": "160px",
+            "boxShadow": "0 1px 6px rgba(160,120,80,0.09)",
+        },
+    )
+
+
+def _graph_card(fig, title: str):
+    """Card contenant un graphe Plotly."""
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(family=FONT_SANS, color=COLORS["text"], size=12),
+        margin=dict(l=16, r=16, t=40, b=16),
+        title=dict(text=title, font=dict(size=14, color=COLORS["text"]), x=0),
+        legend=dict(bgcolor="rgba(0,0,0,0)", borderwidth=0),
+        xaxis=dict(
+            gridcolor=COLORS["border"],
+            linecolor=COLORS["border"],
+            tickfont=dict(color=COLORS["muted"]),
+        ),
+        yaxis=dict(
+            gridcolor=COLORS["border"],
+            linecolor=COLORS["border"],
+            tickfont=dict(color=COLORS["muted"]),
+        ),
+    )
+    return html.Div(
+        dcc.Graph(
+            figure=fig, config={"displayModeBar": False}, style={"height": "320px"}
+        ),
+        style={
+            "background": COLORS["card"],
+            "border": f"1px solid {COLORS['border']}",
+            "borderRadius": "12px",
+            "padding": "16px",
+            "flex": "1",
+            "minWidth": "340px",
+            "boxShadow": "0 1px 6px rgba(160,120,80,0.09)",
+        },
+    )
+
+
+def _render_dashboard(repo):
+    """Construit la vue dashboard : KPIs + histogramme + pie chart."""
+    all_subtasks = repo.subtasks()
+
+    # ── KPIs ─────────────────────────────────────────────────────────────────
+    n_projects = len(repo.projects)
+    n_tasks = sum(len(p.tasks) for p in repo.projects.values())
+    n_subtasks = len(all_subtasks)
+    total_days = round(repo.duration, 1)
+
+    kpis = html.Div(
+        [
+            _kpi_card("Projets", str(n_projects)),
+            _kpi_card("Tâches", str(n_tasks)),
+            _kpi_card("Sous-tâches", str(n_subtasks)),
+            _kpi_card("Jours planifiés", str(total_days)),
+        ],
+        style={
+            "display": "flex",
+            "gap": "16px",
+            "flexWrap": "wrap",
+            "marginBottom": "24px",
+        },
+    )
+
+    # Palette harmonisée avec le thème
+    CHART_COLORS = [
+        COLORS["accent"],
+        COLORS["accent2"],
+        "#e8a87c",
+        "#6ba3a0",
+        "#c0a060",
+        "#8b7ab8",
+    ]
+
+    # ── Histogramme : sous-tâches par priorité ────────────────────────────────
+    from collections import Counter
+
+    prio_counts = Counter(st.priority for _, _, st in all_subtasks)
+    priorities = sorted(prio_counts)
+
+    bar_colors = []
+    from ui import PRIO_COLORS
+
+    for p in priorities:
+        bar_colors.append(PRIO_COLORS.get(p, COLORS["accent"]))
+
+    fig_bar = go.Figure(
+        go.Bar(
+            x=[f"P{p}" for p in priorities],
+            y=[prio_counts[p] for p in priorities],
+            marker_color=bar_colors,
+            marker_line_width=0,
+            text=[prio_counts[p] for p in priorities],
+            textposition="outside",
+            textfont=dict(color=COLORS["text"], size=12),
+        )
+    )
+    fig_bar.update_layout(showlegend=False, yaxis=dict(showgrid=True, zeroline=False))
+
+    # ── Pie chart : jours planifiés par projet ────────────────────────────────
+    project_durations = {
+        name: round(p.duration, 2)
+        for name, p in repo.projects.items()
+        if p.duration > 0
+    }
+    fig_pie = go.Figure(
+        go.Pie(
+            labels=list(project_durations.keys()),
+            values=list(project_durations.values()),
+            marker=dict(
+                colors=CHART_COLORS[: len(project_durations)],
+                line=dict(color=COLORS["card"], width=2),
+            ),
+            textinfo="label+percent",
+            hovertemplate="%{label}: %{value}j<extra></extra>",
+            hole=0.35,
+        )
+    )
+
+    # Message si pas de données
+    empty_msg = (
+        html.Div(
+            "Aucune donnée à afficher — ajoutez des projets et des sous-tâches.",
+            style={
+                "color": COLORS["muted"],
+                "fontSize": "13px",
+                "textAlign": "center",
+                "marginTop": "40px",
+            },
+        )
+        if not all_subtasks
+        else None
+    )
+
+    graphs = html.Div(
+        [
+            _graph_card(fig_bar, "Sous-tâches par priorité"),
+            _graph_card(fig_pie, "Jours planifiés par projet"),
+        ],
+        style={"display": "flex", "gap": "16px", "flexWrap": "wrap"},
+    )
+
+    children = [kpis]
+    if empty_msg:
+        children.append(empty_msg)
+    else:
+        children.append(graphs)
+
+    return html.Div(children)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # CALLBACKS — RENDU DES ONGLETS
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -456,7 +645,7 @@ def render_tab(tab, _, repo_path):
         )
         return html.Div([*cards, add_project_form])
 
-    else:  # tab-priority
+    elif tab == "tab-priority":
         all_st = repo.subtasks()
         priorities = sorted({st.priority for _, _, st in all_st})
         sections = [priority_section(p, repo.subtasks(priority=p)) for p in priorities]
@@ -468,6 +657,9 @@ def render_tab(tab, _, repo_path):
                 style={"color": COLORS["muted"], "fontFamily": FONT_MONO},
             )
         )
+
+    else:  # tab-dashboard
+        return _render_dashboard(repo)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

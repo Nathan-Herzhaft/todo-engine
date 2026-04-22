@@ -878,14 +878,20 @@ def build_layout():
             value="tab-projects",
             children=[
                 dcc.Tab(
-                    label="Par projet",
+                    label="Projets",
                     value="tab-projects",
                     style=TAB_STYLE,
                     selected_style=TAB_SELECTED_STYLE,
                 ),
                 dcc.Tab(
-                    label="Par priorité",
+                    label="Priorités",
                     value="tab-priority",
+                    style=TAB_STYLE,
+                    selected_style=TAB_SELECTED_STYLE,
+                ),
+                dcc.Tab(
+                    label="Dashboard",
+                    value="tab-dashboard",
                     style=TAB_STYLE,
                     selected_style=TAB_SELECTED_STYLE,
                 ),
