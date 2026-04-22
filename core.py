@@ -23,7 +23,7 @@ class Task(BaseModel):
 
     @property
     def duration(self) -> float:
-        return sum(subtask.duration for subtask in self.subtasks.values())
+        return round(sum(subtask.duration for subtask in self.subtasks.values()), 1)
 
     # SubTask Management
 
@@ -65,7 +65,7 @@ class Project(BaseModel):
 
     @property
     def duration(self) -> float:
-        return sum(task.duration for task in self.tasks.values())
+        return round(sum(task.duration for task in self.tasks.values()), 1)
 
     # Task Management
 
@@ -109,7 +109,7 @@ class Repo(BaseModel):
 
     @property
     def duration(self):
-        return sum(project.duration for project in self.projects.values())
+        return round(sum(project.duration for project in self.projects.values()), 1)
 
     # Project Management
 
