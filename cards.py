@@ -17,7 +17,7 @@ from components import (
     summary_link,
     tag_badge,
 )
-from theme import COLORS, prio_color
+from theme import COLORS, TASK_BORDER_COLORS, prio_color
 
 # ── Sous-tâche ────────────────────────────────────────────────────────────────
 
@@ -162,11 +162,13 @@ def subtask_card(subtask, st_desc: str, task_name: str, project_name: str) -> ht
 # ── Tâche ─────────────────────────────────────────────────────────────────────
 
 
-def task_card(task, project_name: str) -> html.Div:
+def task_card(task, project_name: str, idx: int = 0) -> html.Div:
     subtasks_sorted = sorted(
         task.subtasks.items(),
         key=lambda x: (x[1].priority, x[1].description),
     )
+    border_color = TASK_BORDER_COLORS[idx % len(TASK_BORDER_COLORS)]
+
     subtask_items = [
         subtask_card(st, desc, task.name, project_name) for desc, st in subtasks_sorted
     ]
@@ -330,7 +332,7 @@ def task_card(task, project_name: str) -> html.Div:
         ],
         style={
             "background": COLORS["card"],
-            "border": f"1px solid {COLORS['border']}",
+            "border": f"1px solid {border_color}",
             "borderRadius": "10px",
             "padding": "14px 16px",
             "marginBottom": "10px",
@@ -343,7 +345,9 @@ def task_card(task, project_name: str) -> html.Div:
 
 
 def project_card(project) -> html.Div:
-    task_items = [task_card(t, project.name) for t in project.tasks.values()]
+    task_items = [
+        task_card(t, project.name, idx) for idx, t in enumerate(project.tasks.values())
+    ]
 
     add_form = html.Details(
         [
@@ -461,7 +465,7 @@ def project_card(project) -> html.Div:
         style={
             "background": COLORS["surface"],
             "border": f"1px solid {COLORS['border']}",
-            "borderTop": f"3px solid {COLORS['accent2']}",
+            "borderTop": f"3px solid {COLORS['accent']}",
             "borderRadius": "14px",
             "padding": "22px 26px",
             "marginBottom": "22px",

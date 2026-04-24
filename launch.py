@@ -9,7 +9,7 @@ import time
 import webbrowser
 
 HOST = "localhost"
-PORT = 8050
+PORT = 8051
 URL = f"http://{HOST}:{PORT}"
 
 

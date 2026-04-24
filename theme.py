@@ -23,7 +23,7 @@ COLORS = {
     "border": "#e0e4ea",  # gris doux
     # Accents
     "accent": "#1a73e8",  # bleu Google vif
-    "accent2": "#8430ce",  # violet Google
+    "accent2": "#00897b",  # teal Google vif
     # Texte
     "text": "#1f2937",  # gris foncé quasi-noir
     "muted": "#6b7280",  # gris moyen
@@ -49,6 +49,20 @@ COLORS = {
     "shadow_card_project": "0 1px 6px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)",
     "shadow_prio_item": "0 1px 3px rgba(0,0,0,0.06)",
 }
+
+# ── Couleurs cycliques pour les bordures de tâche ────────────────────────────
+# Utilisées dans task_card via TASK_BORDER_COLORS[index % len(...)]
+
+TASK_BORDER_COLORS = [
+    "#1e8e3e",  # vert
+    "#f9ab00",  # ambre
+    "#e91e8c",  # rose
+    "#1a73e8",  # bleu Google
+    "#00897b",  # teal
+    "#e8710a",  # orange
+    "#8430ce",  # violet (inchangé dans les graphes)
+    "#d93025",  # rouge
+]
 
 # ── Couleurs de priorité (1 = urgent) ────────────────────────────────────────
 

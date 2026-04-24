@@ -53,11 +53,11 @@ def delete_btn(btn_id: dict) -> dbc.Button:
         color="link",
         title="Supprimer",
         style={
-            "color": COLORS["muted"],
+            "color": COLORS["danger"],
             "fontSize": "14px",
             "padding": "2px 6px",
             "lineHeight": "1",
-            "opacity": "0.45",
+            "opacity": "0.7",
         },
     )
 
