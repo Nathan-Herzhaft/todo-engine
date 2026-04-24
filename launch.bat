@@ -9,5 +9,4 @@ if not exist ".venv\Scripts\python.exe" (
 )
 
 echo Lancement de Todo-Engine...
-start "" http://localhost:8050
-.venv\Scripts\python.exe app.py
+.venv\Scripts\python.exe launch.py
